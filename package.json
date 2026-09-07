@@ -1,0 +1,29 @@
+{
+  "name": "dsh-session-groups",
+  "version": "0.1.0",
+  "description": "dsh web 版会话分组管理：按分组 + 按工作区双视图浏览会话",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": {
+      "default": "./lib/client.js"
+    }
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml"
+  ],
+  "scripts": {
+    "build": "bash scripts/build.sh",
+    "build:client": "tsdown --config tsdown.config.ts"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  }
+}

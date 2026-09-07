@@ -1,0 +1,4 @@
+# Host 半：注册会话分组插件（分组数据服务 + /session-groups-api 浏览器 API）。
+- insert:
+    - id: session-groups
+      name: 'dsh-session-groups'

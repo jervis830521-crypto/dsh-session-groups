@@ -1,0 +1,6 @@
+﻿src/**/*.js
+
+node_modules/
+lib/
+*.tgz
+tsdown.config.js
