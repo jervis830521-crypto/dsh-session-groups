@@ -33,20 +33,36 @@
 
 ## 安装
 
-### 方式 A：用发布 tgz（推荐，新机器零构建）
+### 方式 A：一键脚本（推荐，换电脑最省事）
 
-1. 到仓库 Releases 页下载最新 `dsh-session-groups-x.y.z.tgz`；
-2. 解压（或直接把包目录给安装工具），在 dsh 环境里执行：
+Windows 上双击就能装/更，不需要 git / node / 构建环境：
 
-```sh
-# 开发机（装了 dsh 开发工具链）：
-dev_install_package <解压出的插件目录>
+1. 仓库页 **Code → Download ZIP**（或 clone），解压后进入 `tools/installer/`；
+2. **双击 `install.cmd`**——脚本自动完成：
+   - 查询 GitHub 最新 Release → 下载 tgz → SHA256 校验；
+   - 解压成品到 `E:\dsh-plugins\dsh-session-groups`（更新前自动备份 `.bak`）；
+   - 写 profile 清单（link 依赖 + bundles）→ 建 junction → 提示重启 dsh；
+3. 重启 dsh，侧边栏出现「分组」行。
 
-# 或手工装配：在 profile 的 package.json 里加 link 依赖，
-# bundles 数组加 "dsh-session-groups"，node_modules 建 junction 后重启 dsh。
+以后升级：**再双击一次 `install.cmd`**（自动检查更新，有新版就原位覆盖，
+junction 不用动）；也可命令行精确控制：
+
+```powershell
+tools\installer\install.ps1 check        # 只查：本地 vs 远程版本
+tools\installer\install.ps1              # 自动：未装则装 / 有新则更 / 已最新则退出
+tools\installer\install.ps1 uninstall    # 拆装配（保留成品文件）
 ```
 
-3. 重启 dsh，侧边栏出现「分组」行。
+脚本顶部可调参数：`$Repo`（仓库）、`$InstallRoot`（安置根目录）、
+`$ProfileName`（目标 profile，默认 web）。fork 仓库后改 `$Repo` 一行即复用。
+
+### 方式 B：手动下载 tgz
+
+1. 到仓库 Releases 页下载最新 `dsh-session-groups-x.y.z.tgz`（认准 Assets 里的
+   .tgz 成品，不是 Source code 源码包）；
+2. 解压到任意固定目录（junction 必须指向**直接含 package.json** 的目录）；
+3. 装配：profile 的 package.json 加 link 依赖 + bundles 条目，node_modules 建
+   junction（或用 `dev_install_package <目录>`），重启 dsh。
 
 ### 方式 B：源码构建
 
@@ -98,6 +114,9 @@ tsc 编译 host → tsdown 打包 client（CJS closure-factory 产物，经
 ├─ cordis.patch.yml        # host 装配补丁（loader entry 注入）
 ├─ package.json            # dsh.bundle.patch + dsh.client.platform=web 双面声明
 ├─ scripts/build.sh        # 一键构建（链接类型依赖 → tsc → tsdown）
+├─ tools/installer/        # 分发工具（与插件源码无关，不参与构建）
+│  ├─ install.ps1          #   一键安装/更新脚本（查 Release → 下载 → 校验 → 装配）
+│  └─ install.cmd          #   双击壳（调 install.ps1）
 ├─ src/host/               # Node 半：分组仓库 + 路由 + 归档通道 + 彻底删除
 │  ├─ index.ts             #   插件入口（webServer 注册）
 │  ├─ groups-store.ts      #   ~/.dsh/storages/session-groups.json 仓库
