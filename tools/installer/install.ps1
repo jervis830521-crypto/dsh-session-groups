@@ -52,7 +52,7 @@ function Test-Installed {
     # 已安装 = profile 里有它的装配痕迹（junction 或 manifest 条目）
     $inManifest = $false
     if (Test-Path $ProfilePkg) {
-        try { $inManifest = ((Get-Content $ProfilePkg -Raw | ConvertFrom-Json).dsh.profile.bundles) -contains $PluginName } catch {}
+        try { $inManifest = @((Get-Content $ProfilePkg -Raw | ConvertFrom-Json).dsh.profile.bundles) -contains $PluginName } catch {}
     }
     return (Test-Path $JunctionPath) -or $inManifest
 }
@@ -113,9 +113,10 @@ function Register-Plugin {
         if ($old -ne $obj.dependencies.$PluginName) { Write-Ok "dependencies.link 已更新（原：$old）" } else { Write-Ok "dependencies.link 已正确" }
     }
 
-    # 2) bundles 数组
-    if (-not $obj.dsh.profile.bundles -contains $PluginName) {
-        $obj.dsh.profile.bundles += $PluginName
+    # 2) bundles 数组（注意：-not 必须加括号，否则解析为 (-not $arr) -contains x，恒为假）
+    if (-not ($obj.dsh.profile.bundles -contains $PluginName)) {
+        if ($null -eq $obj.dsh.profile.bundles) { $obj.dsh.profile.bundles = @() }
+        $obj.dsh.profile.bundles = @($obj.dsh.profile.bundles) + $PluginName
         Write-Ok "bundles 已加 $PluginName"
     } else {
         Write-Ok "bundles 已包含 $PluginName"
