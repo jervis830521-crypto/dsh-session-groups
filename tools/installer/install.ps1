@@ -43,7 +43,9 @@ function Get-LatestRelease {
 # ---------- 读本地已装版本 ----------
 function Get-InstalledVersion {
     if (Test-Path (Join-Path $InstallDir 'package.json')) {
-        try { return (Get-Content (Join-Path $InstallDir 'package.json') -Raw | ConvertFrom-Json).version } catch { return $null }
+        # 必须显式 -Encoding UTF8：本文件无 BOM，PS 5.1 会按 ANSI(GBK) 解码，
+        # 中文 description 会变乱码并吃掉引号 -> ConvertFrom-Json 抛错 -> 被 catch 吞成 $null
+        try { return (Get-Content (Join-Path $InstallDir 'package.json') -Encoding UTF8 -Raw | ConvertFrom-Json).version } catch { return $null }
     }
     return $null
 }
@@ -52,7 +54,7 @@ function Test-Installed {
     # 已安装 = profile 里有它的装配痕迹（junction 或 manifest 条目）
     $inManifest = $false
     if (Test-Path $ProfilePkg) {
-        try { $inManifest = @((Get-Content $ProfilePkg -Raw | ConvertFrom-Json).dsh.profile.bundles) -contains $PluginName } catch {}
+        try { $inManifest = @((Get-Content $ProfilePkg -Encoding UTF8 -Raw | ConvertFrom-Json).dsh.profile.bundles) -contains $PluginName } catch {}
     }
     return (Test-Path $JunctionPath) -or $inManifest
 }
@@ -100,7 +102,7 @@ function Register-Plugin {
     Write-Step "装配进 dsh profile '$ProfileName'"
     if (-not (Test-Path $ProfilePkg)) { Die "找不到 $ProfilePkg —— 这台电脑装过 dsh 吗？profile 名对吗？" }
 
-    $json = Get-Content $ProfilePkg -Raw
+    $json = Get-Content $ProfilePkg -Encoding UTF8 -Raw
     $obj  = $json | ConvertFrom-Json
 
     # 1) dependencies.link
@@ -149,7 +151,7 @@ function Register-Plugin {
 function Unregister-Plugin {
     # 只拆装配不删文件：profile manifest + bundles + junction
     if (Test-Path $ProfilePkg) {
-        $obj = Get-Content $ProfilePkg -Raw | ConvertFrom-Json
+        $obj = Get-Content $ProfilePkg -Encoding UTF8 -Raw | ConvertFrom-Json
         if ($obj.dependencies.PSObject.Properties[$PluginName]) { $obj.dependencies.PSObject.Properties.Remove($PluginName) }
         $obj.dsh.profile.bundles = @($obj.dsh.profile.bundles | Where-Object { $_ -ne $PluginName })
         $out = $obj | ConvertTo-Json -Depth 20
