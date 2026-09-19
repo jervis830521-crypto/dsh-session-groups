@@ -6,6 +6,21 @@
 适配 DeepSeek Harness（dsh）web 界面，注册进 `sidebar.workspaces` slot（与原生
 工作区浏览同位），数据与官方会话账本实时联动。
 
+## 版本兼容
+
+插件跑在 dsh 的 Cordis 插件树上，浏览器半边直接调用 dsh 的**公开服务**，因此与 dsh 版本
+强绑定：dsh 调整服务公开面（增删动词）时，插件必须跟着发版。
+
+| 插件版本 | 适配 dsh | 实测 | 说明 |
+|---|---|---|---|
+| **0.1.1** | ≥ 0.1.5-rc.1 | **0.1.6-alpha.2** | 会话导航改走官方 `uiWorkspace` 服务；取消归档优先走官方 `WorkspaceRegistry.unarchiveSession` |
+| 0.1.0 | 0.1.5-rc.1 ~ 0.1.6-alpha.1 | 0.1.5-rc.2 | 已废弃。dsh 0.1.6-alpha.2 移除了 `ctx.sessions.open()`，点击分组内会话会抛 `TypeError: sessions.open is not a function`，会话切不过去 |
+
+> **升级 dsh 后插件行为异常时**：先在浏览器控制台看有没有 `xxx is not a function`，
+> 再看 dsh 对应版本的源码里该服务还公不公开这个动词。这类报错几乎都是 dsh 改了
+> 服务公开面 —— 例如 0.1.6 把「会话导航」从 `ctx.sessions` 移交给视图所有者的
+> `ctx.uiWorkspace`（导航归属视图所有者是官方的架构原则）。
+
 ## 功能特性
 
 ### 分组管理
@@ -132,18 +147,28 @@ tsc 编译 host → tsdown 打包 client（CJS closure-factory 产物，经
 # 1. 改代码 → 构建（host + client）
 npm run build
 
-# 2. 版本号 +1（semver：功能加 minor，修 bug 加 patch）
-npm version minor   # 或 npm version patch
+# 2. 版本号 +1（semver：功能加 minor，修 bug 加 patch）—— 只改 package.json，tag 手工打
+npm version patch --no-git-tag-version
+#    同时更新上面「版本兼容」表里对应的 dsh 版本与实测版本
 
-# 3. 提交 + 打 tag + 推送
+# 3. 产出 tgz（installer 按 "<包名>-<版本>.tgz" 这个名字找附件，改名就装不上）
+npm pack                      # → dsh-session-groups-x.y.z.tgz
+
+# 4. 提交 + 打 tag + 推送（origin 配了两个 push URL，GitHub 与 Gitee 一起推）
 git add -A
-git commit -m "feat: ..."
+git commit -m "fix: ..."
+git tag vx.y.z
 git push origin main --tags
 
-# 4. 产出 tgz 并在 Gitee 发 Release 挂附件
-npm pack   # 得 dsh-session-groups-x.y.z.tgz
-# Gitee 仓库页 → Releases → 新建 Release（选 tag）→ 上传 tgz 作为附件
+# 5. 在 **GitHub** 发 Release 挂 tgz 附件
+#    仓库页 → Releases → Draft a new release → 选 tag vx.y.z
+#    → 上传 dsh-session-groups-x.y.z.tgz 作为附件
+#    GitHub 会自动为附件计算 digest(sha256)，installer 据此做完整性校验
 ```
+
+> ⚠️ **Release 必须以 GitHub 为准**：一键脚本查的是
+> `api.github.com/repos/jervis830521-crypto/dsh-session-groups/releases/latest`。
+> 只发 Gitee Release 不会被脚本看到（Gitee 仅作源码镜像）。
 
 ## 已知边界
 

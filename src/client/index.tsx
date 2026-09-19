@@ -35,23 +35,23 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { StateDotState } from '@deepseek-ai/dsh-client-ui-primitives'
 
-export const inject = ['slots', 'sessions', 'workspaces']
+export const inject = ['slots', 'sessions', 'uiWorkspace']
 
 export function apply(ctx: ClientContext): void {
+  // 会话导航归 UI 视图所有者：dsh 0.1.6-alpha.2 起 ctx.sessions 的公开面
+  // （ISessions）已不含 open，选中会话/分叉/归档一律走官方 uiWorkspace 服务。
+  const uiWorkspace = ctx.get('uiWorkspace') as {
+    openSession: (sessionId: string) => void
+    forkSession: (sessionId: string) => Promise<void>
+    archiveSession: (sessionId: string) => Promise<void>
+  }
   const sessions = ctx.get('sessions') as {
-    open: (sessionId: string) => void
     // ClientSessions.create 直接返回新会话 id（Promise<SessionId>）。
     create: (request?: { workspaceId?: string }) => Promise<string>
-    // fork 子会话 id（increaseTitle 时服务端顺带加「副本」后缀）。
-    fork: (opts: { sessionId: string; increaseTitle?: boolean }) => Promise<string>
     // binding 解析任意已列出会话的稳定绑定（rename 是 per-session 动词）。
     binding: (id: string) => {
       session: { rename: (title: string) => Promise<{ ok: true } | { ok: false; error: { message: string } }> }
     } | undefined
-  }
-  const workspaces = ctx.get('workspaces') as {
-    // 归档：日志与账本槽位保留，仅从全部列表隐藏（archive-set echo）。
-    archiveSession: (sessionId: string) => Promise<void>
   }
   ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register(
     {
@@ -59,7 +59,7 @@ export function apply(ctx: ClientContext): void {
       id: 'session-groups-button',
       order: 80,
       inject: () => ({
-        openSession: (sessionId: string) => { sessions.open(sessionId) },
+        openSession: (sessionId: string) => { uiWorkspace.openSession(sessionId) },
         // 组内新会话：优先绑定工作区创建（host 在创建时即 attachSession，
         // cwd 与工作区一致 → 首条消息直接落在本会话，不会触发换 id 的 recompose）。
         createSession: (workspaceId?: string) => sessions.create(workspaceId === undefined ? {} : { workspaceId }),
@@ -70,12 +70,14 @@ export function apply(ctx: ClientContext): void {
           const result = await session.rename(title)
           if (!result.ok) throw new Error(result.error.message)
         },
+        // 分叉并打开子会话：官方 uiWorkspace.forkSession 内部即
+        // sessions.fork({ increaseTitle: true }) + 导航（含导航被取代时的中止）。
         forkSession: (sessionId: string) => {
-          sessions.fork({ sessionId, increaseTitle: true })
-            .then((childId) => { sessions.open(childId) })
+          uiWorkspace.forkSession(sessionId)
             .catch(() => { /* 分叉失败保持当前选择（原生同姿势） */ })
         },
-        archiveSession: (sessionId: string) => workspaces.archiveSession(sessionId),
+        // 归档：官方 uiWorkspace.archiveSession，当前选中被归档时同时清空主区。
+        archiveSession: (sessionId: string) => uiWorkspace.archiveSession(sessionId),
       }),
     },
     GroupsEntry,

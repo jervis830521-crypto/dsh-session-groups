@@ -1,6 +1,6 @@
 {
   "name": "dsh-session-groups",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "dsh web 版会话分组管理：按分组 + 按工作区双视图浏览会话",
   "type": "module",
   "main": "./lib/index.js",
